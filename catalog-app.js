@@ -136,7 +136,7 @@ P.catalog=()=>`<h1>Каталог аттракционов</h1><p class="lead">�
 P["toc"]=()=>`<h1>Оглавление энциклопедии</h1><p class="lead">Разделы справочника, источники и инструменты выбора.</p><ol class="toc">${DB.toc.map(t=>`<li>${t.href?`<a href="${t.href}">${esc(t.title)}</a>`:esc(t.title)}<span class="st ${t.href?'ok':'p2'}">${t.href?'готово':'в работе'}</span><div class="small muted">${esc(t.desc)}</div></li>`).join("")}</ol>`;
 let MF={seg:"",country:"",rf:"",sanc:"",circle:"",key:"",q:"",sort:"name"};
 P["map"]=()=>`<h1>Производители мира</h1><p class="lead">Заметные производители аттракционов (слабые записи помечены): страна, сегменты, статус для России. Нажмите на страну на карте, чтобы отфильтровать список.</p>
-<div class="mapwrap" id="mapw">${DB.map_svg}<div class="maptip" id="tip"></div></div><div class="legend">${DB.map_legend}</div>
+<div class="mapwrap" id="mapw">${DB.map_svg}<p class="map-credit">Карта: Natural Earth 1:110m, общественное достояние</p><div class="maptip" id="tip" role="tooltip"></div></div><div class="legend">${DB.map_legend}</div>
 <div class="filters"><input placeholder="Фильтр по названию" value="${esc(MF.q)}" oninput="MF.q=this.value;drawMList()">
 <select onchange="MF.seg=this.value;drawMList()"><option value="">Все сегменты</option>${Object.entries(SEG).map(([k,v])=>`<option value="${k}" ${MF.seg==k?'selected':''}>${v}</option>`).join("")}</select>
 <select id="fcountry" onchange="MF.country=this.value;drawMList()"><option value="">Все страны</option>${[...new Set(DB.manufacturers.map(m=>m.country).filter(c=>c&&c!=="нет данных"))].sort().map(c=>`<option ${MF.country==c?'selected':''}>${esc(c)}</option>`).join("")}</select>
@@ -167,12 +167,48 @@ function drawMList(){const L=mfilter().sort((a,b)=>MF.sort=="country"?a.country.
  $("#mcount").textContent=`показано ${L.length} из ${DB.manufacturers.length}`;
  $("#mtab").innerHTML=`<tr><th onclick="MF.sort='name';drawMList()">Производитель</th><th onclick="MF.sort='country';drawMList()">Страна</th><th>Сегменты</th><th>Чем известен</th><th>Статус для РФ</th><th onclick="MF.sort='models';drawMList()" class="num">Моделей</th></tr>`+
  L.map(m=>`<tr><td><a href="#/m/${m.id}"><b>${esc(m.short)}</b></a><div>${flags(m)}</div></td><td>${esc(m.country)}</td><td>${m.segments.map(s=>`<span class="chip">${esc(SEG[s]||s)}</span>`).join("")}</td><td class="small">${esc(m.specialty_ru||"")}</td><td>${rfBadge(m.rf_status)}${m.rf_status_date?`<div class="muted small">${esc(m.rf_status_date)}</div>`:""}</td><td class="num">${m.n_models||""}</td></tr>`).join("");
- labelTables();document.querySelectorAll("#mapw .c").forEach(p=>p.style.outline="");document.querySelectorAll("#mtab th[onclick]").forEach(th=>{th.tabIndex=0;th.setAttribute("role","button");th.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();th.click()}}});}
-function bindMap(){const tip=$("#tip");document.querySelectorAll("#mapw .c").forEach(p=>{const cc=p.dataset.c, n=DB.country_counts[cc];
- if(n){p.classList.add("has");p.style.fill=DB.map_color(n)}
- p.addEventListener("mousemove",e=>{const r=$("#mapw").getBoundingClientRect();tip.style.display="block";tip.style.left=(e.clientX-r.left+12)+"px";tip.style.top=(e.clientY-r.top+12)+"px";tip.textContent=(p.dataset.n||cc)+(n?` — ${n} произв.`:"")});
- p.addEventListener("mouseleave",()=>tip.style.display="none");
- p.addEventListener("click",()=>{if(!n)return;MF.country=DB.cc2country[cc]||"";const s=$("#fcountry");if(s)s.value=MF.country;drawMList();$("#mtab").scrollIntoView({behavior:"smooth"})})});}
+ labelTables();document.querySelectorAll("#mapw .c.has").forEach(p=>p.setAttribute("aria-pressed",String(Boolean(MF.country)&&MF.country===DB.cc2country[p.dataset.c])));document.querySelectorAll("#mtab th[onclick]").forEach(th=>{th.tabIndex=0;th.setAttribute("role","button");th.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();th.click()}}});}
+function bindMap(){
+ const map=$("#mapw"),tip=$("#tip"),svg=map.querySelector("svg");
+ // Interactive countries must remain reachable, rather than hidden inside an image role.
+ svg.setAttribute("role","group");
+ const hide=()=>{tip.style.display="none"};
+ const show=(p,n,x,y)=>{
+  tip.textContent=(DB.cc2country[p.dataset.c]||p.dataset.n||p.dataset.c)+(n?" · производителей в каталоге: "+n:" · в каталоге нет производителей");
+  tip.style.display="block";
+  const r=map.getBoundingClientRect(),t=tip.getBoundingClientRect();
+  let left=x-r.left+12,top=y-r.top+12;
+  if(left+t.width>r.width-8)left=x-r.left-t.width-12;
+  if(top+t.height>r.height-8)top=y-r.top-t.height-12;
+  tip.style.left=Math.max(8,Math.min(left,r.width-t.width-8))+"px";
+  tip.style.top=Math.max(8,Math.min(top,r.height-t.height-8))+"px";
+ };
+ map.addEventListener("keydown",e=>{if(e.key==="Escape")hide()});
+ map.addEventListener("mouseleave",hide);
+ map.querySelectorAll(".c").forEach(p=>{
+  const cc=p.dataset.c,n=DB.country_counts[cc];
+  if(n){
+   p.classList.add("has");p.style.fill=DB.map_color(n);
+   p.setAttribute("role","button");p.setAttribute("tabindex","0");
+   p.setAttribute("aria-label",(DB.cc2country[cc]||p.dataset.n||cc)+". Производителей в каталоге: "+n+". Фильтровать список");
+   p.setAttribute("aria-pressed",String(Boolean(MF.country)&&MF.country===DB.cc2country[cc]));
+   p.addEventListener("focus",()=>{const r=p.getBoundingClientRect();show(p,n,r.x+r.width/2,r.y+r.height/2)});
+   p.addEventListener("blur",hide);
+   p.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();p.dispatchEvent(new MouseEvent("click",{bubbles:true}))}});
+  }
+  p.addEventListener("mousemove",e=>show(p,n,e.clientX,e.clientY));
+  p.addEventListener("mouseleave",hide);
+  p.addEventListener("click",()=>{
+   if(!n)return;
+   hide();MF.country=DB.cc2country[cc]||"";
+   const s=$("#fcountry");if(s)s.value=MF.country;
+   drawMList();
+   // Put the selected country and reset control in view, including on a phone.
+   s?.focus({preventScroll:true});
+   s?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
+  });
+ });
+}
 P["m"]=id=>{const m=M[id];if(!m)return"<h1>Не найдено</h1>";const models=DB.models.filter(x=>x.manufacturer_id==id);const pr=m.profile;
  return `<p class="small"><a href="#/map">← все производители</a></p><h1>${esc(m.name)}</h1><div>${flags(m)}</div>${(()=>{const o=models.filter(x=>x.om);return o.length?`<p class="note">В «Острове Мечты»: ${o.map(x=>`${esc(x.om_name||"")} → <a href="javascript:openModel('${x.id}')">${esc(x.model)}</a>`).join("; ")}. Размер или версия в парке могут отличаться.</p>`:""})()}
  <div class="two" style="margin-top:14px"><div>${pr?`<p class="lead">${esc(pr.profile_ru)}</p>${pr.sources?.length?`<div class="small muted">Источники профиля: ${pr.sources.map(srcLink).join("; ")}</div>`:""}`:`<p class="lead">${esc(m.specialty_ru||"")}</p>`}
@@ -380,7 +416,7 @@ function route(force){const h=location.hash.replace(/^#\/?/,"");if(!force&&h===l
  document.querySelectorAll(".tw,.scroll").forEach(n=>{n.tabIndex=0;n.setAttribute("role","region");n.setAttribute("aria-label","Таблица, прокручивается по горизонтали")});
  document.querySelectorAll("#nav a").forEach(a=>{const group=SECIDS.includes(p)||p==="t"||p==="types"||p.startsWith("dark")?"catalog":p==="m"?"map":["chapters","ch","market","used","quiet","ostrov","glossary","sources"].includes(p)?"toc":p;const on=a.getAttribute("href").replace(/^#\/?/,"").split("/")[0]===group;a.classList.toggle("on",on);if(on)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
  if(p==="map"){bindMap();drawMList()} if(SECIDS.includes(p)&&arg){drawX(arg)} if(p==="glossary")drawG();
- labelTables();fitSchemeNotes();if(!p||p==="ideas")window.EncyclopediaFeed.mount(p);if(keepScroll)window.scrollTo(0,y);else window.scrollTo(0,0)}
+ labelTables();fitSchemeNotes();if(!p||p==="ideas")window.EncyclopediaFeed.mount(p);if(keepScroll)window.scrollTo(0,y);else window.scrollTo(0,0);window.EncyclopediaAnalytics?.pageView()}
 window.addEventListener("hashchange",()=>{closeModal();route()});
 /* Sourced dark attraction dossiers. Installed versions are separate from product models. */
 const DK=DB.dark, DKCASE=Object.fromEntries(DK.cases.map(c=>[c.id,c])), DKSRC=Object.fromEntries(DK.sources.map(s=>[s.id,s]));

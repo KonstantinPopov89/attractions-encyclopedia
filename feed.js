@@ -155,7 +155,7 @@
     cancelGesture();pointers.clear();counts();
     if(page==="ideas"){renderIdeas();return;}
     const focus=focusedId();normalize();$("#app").innerHTML=html();$("#app").dataset.page="feed";
-    renderCard();restoreFocus(focus);markNav("");
+    renderCard();restoreFocus(focus);markNav("");window.EncyclopediaAnalytics?.pageView();
     $("#feed-query").addEventListener("input",e=>{state[state.mode].q=e.target.value;state[state.mode].id="";undo=null;normalize();renderCard();});
     $("#feed-group").addEventListener("change",e=>{state[state.mode].group=e.target.value;state[state.mode].id="";undo=null;normalize();renderCard();});
   }
@@ -164,7 +164,7 @@
     return '<section class="feed-ideas"><h1>Сохраненные идеи</h1><p class="lead">Реальные объекты, к которым вы хотите вернуться.</p><div class="actions"><a class="btn" href="#/" data-feed-action="browse-objects">Смотреть объекты</a><a class="btn" href="#/longlist">Лонг-лист моделей</a></div>'+
       (!items.length?'<p>Пока ничего не сохранено. Выберите «Реальные объекты» в ленте и нажмите «Сохранить».</p>':'<div class="feed-idea-list">'+items.map(c=>'<article><img src="'+esc(c.photo)+'" alt="'+esc(c.name)+'" width="160" height="110" loading="lazy"><div><h2><a href="'+esc(c.route)+'">'+esc(c.name)+'</a></h2><p>'+esc(c.byline)+'</p><p class="small muted">'+esc(c.note)+'</p></div><button class="btn" data-feed-action="remove-idea" data-id="'+esc(c.id)+'">Убрать</button></article>').join("")+'</div>')+'</section>';
   }
-  function renderIdeas(){const f=focusedId();$("#app").innerHTML=ideasHTML();$("#app").dataset.page="ideas";markNav("ideas");restoreFocus(f);}
+  function renderIdeas(){const f=focusedId();$("#app").innerHTML=ideasHTML();$("#app").dataset.page="ideas";markNav("ideas");restoreFocus(f);window.EncyclopediaAnalytics?.pageView();}
   function markNav(page){for(const el of document.querySelectorAll("#nav a")){const on=el.getAttribute("href")==="#/"+page;el.classList.toggle("on",on);if(on)el.setAttribute("aria-current","page");else el.removeAttribute("aria-current");}}
   async function ensureCatalog(keep=false) {
     if(appReady)return window.EncyclopediaCatalog;
@@ -172,8 +172,8 @@
     if(!keep){$("#app").innerHTML='<div class="feed-loading" role="status"><h1>Открываем энциклопедию</h1><p>Загружаем подробные сведения и источники.</p><a href="#/">Вернуться к ленте</a></div>';}
     catalogPromise=(async()=>{
       try{
-        await script("catalog-data.js?v=20261113-r08");
-        await script("catalog-app.js?v=20261113-r08");
+        await script("catalog-data.js?v=20261113-r09");
+        await script("catalog-app.js?v=20261113-r09");
         if(!window.EncyclopediaCatalog)throw Error("app");
         appReady=true;counts();return window.EncyclopediaCatalog;
       }catch(e){catalogPromise=null;if(!keep)$("#app").innerHTML='<h1>Не удалось открыть энциклопедию</h1><p>Проверьте соединение и повторите загрузку. Сохраненный выбор остается в браузере.</p><button class="btn pri" data-feed-action="retry">Повторить</button><a class="btn" href="#/">В ленту</a>';else toast("Не удалось загрузить подробности. Повторите попытку.");throw e;}
