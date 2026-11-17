@@ -198,3 +198,5 @@ main[data-page=feed]{padding-top:20px}
 /* Keep long parameter sources within the model column at every viewport. */
 .modal .pt{table-layout:fixed}
 .modal .pt td{overflow-wrap:anywhere}
+
+.vfacade.vexternal{text-decoration:none;box-sizing:border-box;color:#fffdf8}

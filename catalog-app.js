@@ -291,20 +291,23 @@ function bindGalSwipe(selector="#mgal-stage",count=activeGalItems.length,step=st
  st.addEventListener("pointercancel",()=>{pid=null;});
 }
 
+function canEmbedVideo(v){return v.host==="youtube"||v.host==="direct";}
 function renderVideoBlocks(vids,fallbackPoster){
  if(!vids||!vids.length)return "";
  return `<div id="sec-video">${vids.map((v,idx)=>{
   const poster=fallbackPoster||v.thumb_url||"";
+  const embedded=canEmbedVideo(v),label=esc(v.host_label||v.host);
+  const opening=embedded?`<button type="button" class="vfacade" onclick="mountVideoPlayer(${idx})" aria-label="Воспроизвести видео: ${esc(v.title||v.host_label)}">`:`<a class="vfacade vexternal" href="${esc(v.direct_url)}" target="_blank" rel="noopener noreferrer" aria-label="Смотреть на ${label}: ${esc(v.title||"Видео аттракциона")}">`;
   return `<div class="vblock" data-vidx="${idx}">
    <div class="vstage" id="vstage-${idx}">
-    <button type="button" class="vfacade" onclick="mountVideoPlayer(${idx})" aria-label="Воспроизвести видео: ${esc(v.title||v.host_label)}">
+    ${opening}
      ${poster?`<img class="vposter" src="${esc(poster)}" alt="" loading="lazy" onerror="this.remove()">`:""}
      <div class="vfacade-inner">
-      <span class="vplay-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M8 5.5v13l11-6.5-11-6.5z"/></svg></span>
+      <span class="vplay-icon" aria-hidden="true">${embedded?`<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M8 5.5v13l11-6.5-11-6.5z"/></svg>`:"↗"}</span>
       <span class="vtitle">${esc(v.title||"Видео аттракциона")}</span>
-      <span class="vsub">Нажмите для запуска плеера (${esc(v.host_label||v.host)}) · без фоновой подгрузки</span>
+      <span class="vsub">${embedded?`Нажмите для запуска плеера (${label}) · без фоновой подгрузки`:`Смотреть на ${label} ↗ · откроется новая вкладка`}</span>
      </div>
-    </button>
+    ${embedded?"</button>":"</a>"}
    </div>
    <div class="vfoot">
     <span class="muted small"><span class="tag">${esc(v.host_label||v.host)}</span> ${esc(v.note||"Источник видео")}</span>
@@ -317,7 +320,7 @@ function renderVideoBlocks(vids,fallbackPoster){
 let activeVideosList=[];
 window.mountVideoPlayer=function(idx){
  const v=activeVideosList[idx];const stage=$("#modal").style.display==="flex"?$("#modal #vstage-"+idx):document.getElementById("vstage-"+idx);
- if(!v||!stage)return;
+ if(!v||!stage||!canEmbedVideo(v))return;
  if(v.host==="direct"){
   stage.innerHTML=`<div class="vplayer-mount"><video controls autoplay playsinline preload="metadata" src="${esc(v.embed_url)}"></video></div>`;
  }else{
@@ -871,7 +874,7 @@ P["sources"]=()=>{
  const videoModels=DB.models.filter(x=>(x.videos_count||0)>0);
  return `<h1>Источники</h1><p class="lead">Ссылки из записей книги (${(DB.sources||[]).length}): источники фактов, уточнений, фотографий и видеороликов. Поисковый запрос сам по себе не подтверждает утверждение. Даты публикации и проверки указаны в записях, если они установлены.</p><div class="filters"><input placeholder="Фильтр" oninput="document.querySelectorAll('#srcl li').forEach(li=>li.classList.toggle('hide',!li.textContent.toLowerCase().includes(this.value.toLowerCase())))"></div><ol id="srcl" class="small">${(DB.sources||[]).map(s=>`<li>${srcLink(s)} <span class="muted">— ${esc(s.used_by)}</span></li>`).join("")}</ol>
  <h2>Фотографии и иллюстрации моделей (${photoModels.length})</h2><p class="small muted">Изображения взяты с официальных сайтов, брошюр и архивов производителей, подтвержденных дистрибьюторов, сайтов парков и профильных баз (RCDB, Coasterpedia, Wikimedia Commons) с указанием типа кадра (заводской кадр, конкретная установка в парке, 3D-рендер или чертеж) и уменьшены до 1200 px в прогрессивном sRGB JPEG. Права принадлежат правообладателям; для свободных лицензий сохранены автор и лицензия.</p><ol class="small">${photoModels.map(x=>`<li><a href="#/model/${esc(x.id)}" onclick="return goModel('${x.id}',event)">${esc(x.model)}</a> (${esc(M[x.manufacturer_id]?.short||x.manufacturer_id)})${(x.photos_count||0)>1?` · ${x.photos_count} кадра`:""} — ${srcLink(x.photo_page||x.photo_url||(x.spec_source||{}).url)}${x.photo_caption?` <span class="muted">— ${esc(x.photo_caption)}</span>`:""}</li>`).join("")}</ol>
- ${videoModels.length?`<h2>Встроенные видео (${videoModels.length} моделей)</h2><p class="small muted">Ролики подключаются по клику с официальных страниц производителей, каналов парков и видеоплатформ без локального копирования видеофайлов.</p><ol class="small">${videoModels.map(x=>`<li><a href="#/model/${esc(x.id)}" onclick="return goModel('${x.id}',event)">${esc(x.model)}</a> (${esc(M[x.manufacturer_id]?.short||x.manufacturer_id)}) — ${(x.videos||[]).map(v=>srcLink({url:v.direct_url,title:v.title||v.host_label})).join("; ")||"в карточке"}</li>`).join("")}</ol>`:""}`;
+ ${videoModels.length?`<h2>Видеоматериалы (${videoModels.length} моделей)</h2><p class="small muted">YouTube и прямые видеофайлы запускаются в карточке; Vimeo и Rutube открываются на площадке в новой вкладке. Рядом с каждым роликом указан источник.</p><ol class="small">${videoModels.map(x=>`<li><a href="#/model/${esc(x.id)}" onclick="return goModel('${x.id}',event)">${esc(x.model)}</a> (${esc(M[x.manufacturer_id]?.short||x.manufacturer_id)}) — ${(x.videos||[]).map(v=>srcLink({url:v.direct_url,title:v.title||v.host_label})).join("; ")||"в карточке"}</li>`).join("")}</ol>`:""}`;
 };
 
 /* ---------- Dark attraction dossiers (DB.dark) ---------- */
