@@ -2,7 +2,7 @@
    and loads lightweight catalog-index.js + catalog-app.js on catalog/model/selection routes. */
 (() => {
   "use strict";
-  const RELEASE = "20261116-r10";
+  const RELEASE = "20261117-r12";
   const PUBLIC_BASE = "https://konstantinpopov89.github.io/attractions-encyclopedia";
   let D = window.ENCYCLOPEDIA_FEED_DATA || null;
   let records = { models: new Map(), objects: new Map() };

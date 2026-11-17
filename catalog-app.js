@@ -1,6 +1,6 @@
 "use strict";
 const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const RELEASE=DB.release||window.EncyclopediaFeed?.RELEASE||"20261116-r10";
+const RELEASE=DB.release||window.EncyclopediaFeed?.RELEASE||"20261117-r12";
 const PUBLIC_BASE=window.EncyclopediaFeed?.PUBLIC_BASE||"https://konstantinpopov89.github.io/attractions-encyclopedia";
 
 const M=Object.fromEntries(DB.manufacturers.map(m=>[m.id,m]));
